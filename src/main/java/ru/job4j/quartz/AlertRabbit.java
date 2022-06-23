@@ -16,25 +16,27 @@ public class AlertRabbit {
 
     public static void main(String[] args) throws Exception {
         try {
-            Connection connection = getConnection();
-            Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-            scheduler.start();
-            JobDataMap data = new JobDataMap();
-            data.put("connection", connection);
-            JobDetail job = newJob(Rabbit.class)
-                    .usingJobData(data)
-                    .build();
-            SimpleScheduleBuilder times = simpleSchedule()
-                    .withIntervalInSeconds(Integer.parseInt(fileRead()
-                            .getProperty("rabbit.interval")))
-                    .repeatForever();
-            Trigger trigger = newTrigger()
-                    .startNow()
-                    .withSchedule(times)
-                    .build();
-            scheduler.scheduleJob(job, trigger);
-            Thread.sleep(10000);
-            scheduler.shutdown();
+            Properties properties = fileRead();
+            try (Connection connection = getConnection(properties)) {
+                Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+                scheduler.start();
+                JobDataMap data = new JobDataMap();
+                data.put("connection", connection);
+                JobDetail job = newJob(Rabbit.class)
+                        .usingJobData(data)
+                        .build();
+                SimpleScheduleBuilder times = simpleSchedule()
+                        .withIntervalInSeconds(Integer.parseInt(properties
+                                .getProperty("rabbit.interval")))
+                        .repeatForever();
+                Trigger trigger = newTrigger()
+                        .startNow()
+                        .withSchedule(times)
+                        .build();
+                scheduler.scheduleJob(job, trigger);
+                Thread.sleep(10000);
+                scheduler.shutdown();
+            }
         } catch (SchedulerException se) {
             se.printStackTrace();
         }
@@ -42,16 +44,14 @@ public class AlertRabbit {
 
     public static class Rabbit implements Job {
         @Override
-        public void execute(JobExecutionContext context) {
+        public void execute(JobExecutionContext context)  {
             System.out.println("Rabbit runs here ...");
-            try (Connection cn = (Connection) context.getJobDetail()
-                    .getJobDataMap().get("connection")) {
+            Connection cn = (Connection) context.getJobDetail().getJobDataMap().get("connection");
                 try (PreparedStatement statement =
                              cn.prepareStatement("insert into rabbit(created_date) values (?)")) {
                     statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
                     statement.execute();
-                }
-            } catch (Exception e) {
+            } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
@@ -67,8 +67,7 @@ public class AlertRabbit {
         return properties;
     }
 
-    private static Connection getConnection() throws Exception {
-        Properties file = fileRead();
+    private static Connection getConnection(Properties file) throws Exception {
         Class.forName(file.getProperty("jdbc.driver"));
         String url = file.getProperty("jdbc.url");
         String login = file.getProperty("jdbc.username");
