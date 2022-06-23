@@ -15,28 +15,26 @@ import static org.quartz.SimpleScheduleBuilder.*;
 public class AlertRabbit {
 
     public static void main(String[] args) throws Exception {
-        try {
-            Properties properties = fileRead();
-            try (Connection connection = getConnection(properties)) {
-                Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-                scheduler.start();
-                JobDataMap data = new JobDataMap();
-                data.put("connection", connection);
-                JobDetail job = newJob(Rabbit.class)
-                        .usingJobData(data)
-                        .build();
-                SimpleScheduleBuilder times = simpleSchedule()
-                        .withIntervalInSeconds(Integer.parseInt(properties
-                                .getProperty("rabbit.interval")))
-                        .repeatForever();
-                Trigger trigger = newTrigger()
-                        .startNow()
-                        .withSchedule(times)
-                        .build();
-                scheduler.scheduleJob(job, trigger);
-                Thread.sleep(10000);
-                scheduler.shutdown();
-            }
+        Properties properties = fileRead();
+        try (Connection connection = getConnection(properties)) {
+            Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+            scheduler.start();
+            JobDataMap data = new JobDataMap();
+            data.put("connection", connection);
+            JobDetail job = newJob(Rabbit.class)
+                    .usingJobData(data)
+                    .build();
+            SimpleScheduleBuilder times = simpleSchedule()
+                    .withIntervalInSeconds(Integer.parseInt(properties
+                            .getProperty("rabbit.interval")))
+                    .repeatForever();
+            Trigger trigger = newTrigger()
+                    .startNow()
+                    .withSchedule(times)
+                    .build();
+            scheduler.scheduleJob(job, trigger);
+            Thread.sleep(10000);
+            scheduler.shutdown();
         } catch (SchedulerException se) {
             se.printStackTrace();
         }
@@ -44,13 +42,13 @@ public class AlertRabbit {
 
     public static class Rabbit implements Job {
         @Override
-        public void execute(JobExecutionContext context)  {
+        public void execute(JobExecutionContext context) {
             System.out.println("Rabbit runs here ...");
             Connection cn = (Connection) context.getJobDetail().getJobDataMap().get("connection");
-                try (PreparedStatement statement =
-                             cn.prepareStatement("insert into rabbit(created_date) values (?)")) {
-                    statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-                    statement.execute();
+            try (PreparedStatement statement =
+                         cn.prepareStatement("insert into rabbit(created_date) values (?)")) {
+                statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+                statement.execute();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
