@@ -58,7 +58,7 @@ public class Grabber implements Grab {
      * @param parse Извлечение данных с сайта.
      * @param store Хранилище.
      * @param scheduler Класса управляющего всеми работами с переодичностью.
-     * @throws SchedulerException
+     * @throws SchedulerException исключение при создании Scheduler.
      */
     @Override
     public void init(Parse parse, Store store, Scheduler scheduler) throws SchedulerException {
@@ -105,7 +105,8 @@ public class Grabber implements Grab {
      */
     public void web(Store store) {
         new Thread(() -> {
-            try (ServerSocket server = new ServerSocket(Integer.parseInt(cfg.getProperty("port")))) {
+            try (ServerSocket server
+                         = new ServerSocket(Integer.parseInt(cfg.getProperty("port")))) {
                 while (!server.isClosed()) {
                     Socket socket = server.accept();
                     try (OutputStream out = socket.getOutputStream()) {
