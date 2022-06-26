@@ -46,7 +46,7 @@ public class HabrCareerParse implements Parse {
      * @return массив оъектов Post
      */
     @Override
-    public List<Post> list(String link) {
+    public  List<Post> list(String link) {
         List<Post> result = new ArrayList<>();
         try {
             for (int i = 1; i <= STR; i++) {
