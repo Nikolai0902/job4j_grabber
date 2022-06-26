@@ -23,11 +23,15 @@ public class PsqlStore implements Store, AutoCloseable {
                 cfg.getProperty("jdbc.password"));
     }
 
+    /**
+     * Код вставки в таблицу post.
+     * @param post вакансия.
+     */
     @Override
     public void save(Post post) {
         try (PreparedStatement statement = cnn
                 .prepareStatement("insert into post(name, text, link, created) "
-                                             + "values (?, ?, ?, ?)",
+                                             + "values (?, ?, ?, ?) on conflict(link) do nothing",
                      Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, post.getTitle());
             statement.setString(2, post.getDescription());
@@ -44,19 +48,17 @@ public class PsqlStore implements Store, AutoCloseable {
         }
     }
 
+    /**
+     * Вывести все вакансии из БД.
+     * @return массив вакансий.
+     */
     @Override
     public List<Post> getAll() {
         List<Post> resultPost = new ArrayList<>();
         try (PreparedStatement statement = cnn.prepareStatement("select * from post")) {
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
-                    resultPost.add(new Post(
-                            resultSet.getInt("id"),
-                            resultSet.getString("name"),
-                            resultSet.getString("text"),
-                            resultSet.getString("link"),
-                            resultSet.getTimestamp("created").toLocalDateTime()
-                    ));
+                    resultPost.add(resultPost(resultSet));
                 }
             }
         } catch (Exception e) {
@@ -65,6 +67,11 @@ public class PsqlStore implements Store, AutoCloseable {
         return resultPost;
     }
 
+    /**
+     * Вывести вакансию по id из БД.
+     * @param id индекс вакансии.
+     * @return вакансия.
+     */
     @Override
     public Post findById(int id) {
         Post result = null;
@@ -73,13 +80,7 @@ public class PsqlStore implements Store, AutoCloseable {
             statement.setInt(1, id);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
-                    result = new Post(
-                            resultSet.getInt("id"),
-                            resultSet.getString("name"),
-                            resultSet.getString("text"),
-                            resultSet.getString("link"),
-                            resultSet.getTimestamp("created").toLocalDateTime()
-                    );
+                    result = resultPost(resultSet);
                 }
             }
         } catch (Exception e) {
@@ -93,5 +94,22 @@ public class PsqlStore implements Store, AutoCloseable {
         if (cnn != null) {
             cnn.close();
         }
+    }
+
+    /**
+     * Отдельный метод для получения элемента вакансии Post
+     * для методов findById и getAll.
+     * @param resultSet Объект для обхода элементов из таблицы БД.
+     * @return вакансия.
+     * @throws SQLException неверный запрос.
+     */
+    private static Post resultPost(ResultSet resultSet) throws SQLException {
+        return new Post(
+                resultSet.getInt("id"),
+                resultSet.getString("name"),
+                resultSet.getString("text"),
+                resultSet.getString("link"),
+                resultSet.getTimestamp("created").toLocalDateTime()
+        );
     }
 }
